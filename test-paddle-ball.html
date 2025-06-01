@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paddle & Ball Test - Block Breaker Revolution</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #333;
+            background: #000;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px;
+        }
+        
+        .controls button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #5855eb;
+        }
+        
+        .info {
+            text-align: center;
+            margin: 10px;
+            font-size: 14px;
+        }
+        
+        .instructions {
+            text-align: center;
+            margin: 20px;
+            padding: 15px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 8px;
+        }
+        
+        .debug-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Paddle & Ball Mechanics Test</h1>
+    <div class="info">Testing paddle control, ball physics, and collision interactions</div>
+    
+    <div class="instructions">
+        <strong>Controls:</strong><br>
+        Arrow Keys / A,D - Move paddle left/right<br>
+        Space - Launch ball (when attached to paddle)<br>
+        Click - Reset ball to paddle
+    </div>
+    
+    <canvas id="gameCanvas" width="1024" height="768"></canvas>
+    
+    <div class="controls">
+        <button onclick="launchBall()">Launch Ball</button>
+        <button onclick="resetBall()">Reset Ball</button>
+        <button onclick="toggleMagnetic()">Toggle Magnetic Paddle</button>
+        <button onclick="speedBoost()">Speed Boost</button>
+        <button onclick="toggleDebug()">Toggle Debug</button>
+    </div>
+    
+    <div class="debug-info" id="debugInfo">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Ball Speed: <span id="ballSpeed">0</span></div>
+        <div>Ball Position: <span id="ballPos">0, 0</span></div>
+        <div>Paddle Position: <span id="paddlePos">0, 0</span></div>
+        <div>Ball State: <span id="ballState">Stuck</span></div>
+        <div>Collisions: <span id="collisionCount">0</span></div>
+    </div>
+
+    <script type="module">
+        import { PhysicsEngine } from './js/game/physics/physicsEngine.js';
+        import { Paddle } from './js/game/entities/paddle.js';
+        import { Ball } from './js/game/entities/ball.js';
+        import { Renderer } from './js/game/core/renderer.js';
+        import { Vector2D } from './js/utils/vector.js';
+        import { GAME_CONFIG, COLORS } from './js/utils/constants.js';
+
+        class PaddleBallTest {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.physics = new PhysicsEngine();
+                this.renderer = new Renderer(this.canvas);
+                
+                this.lastTime = 0;
+                this.fps = 0;
+                this.frameCount = 0;
+                this.lastFpsUpdate = 0;
+                this.showDebug = true;
+                this.collisionCount = 0;
+                
+                this.init();
+            }
+            
+            init() {
+                // Start physics engine
+                this.physics.start();
+                
+                // Create paddle
+                const paddleX = GAME_CONFIG.CANVAS.WIDTH / 2 - GAME_CONFIG.PHYSICS.PADDLE_WIDTH / 2;
+                const paddleY = GAME_CONFIG.CANVAS.HEIGHT - 50;
+                this.paddle = new Paddle(paddleX, paddleY);
+                this.physics.addBody(this.paddle.physicsBody);
+                
+                // Create ball
+                const ballX = GAME_CONFIG.CANVAS.WIDTH / 2;
+                const ballY = paddleY - 20;
+                this.ball = new Ball(ballX, ballY);
+                this.physics.addBody(this.ball.physicsBody);
+                
+                // Start with ball stuck to paddle
+                this.ball.stickTo(this.paddle);
+                
+                // Add mouse interaction
+                this.canvas.addEventListener('click', (e) => {
+                    this.resetBall();
+                });
+                
+                // Add keyboard handler for space to launch
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space' && this.ball.isStuck) {
+                        this.launchBall();
+                        e.preventDefault();
+                    }
+                });
+                
+                // Start game loop
+                this.gameLoop();
+            }
+            
+            launchBall() {
+                if (this.ball.isStuck) {
+                    // Launch at slight random angle
+                    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+                    this.ball.launch(angle);
+                }
+            }
+            
+            resetBall() {
+                const paddleCenter = this.paddle.getCenter();
+                this.ball.reset(paddleCenter.x, paddleCenter.y - 20);
+                this.ball.stickTo(this.paddle);
+            }
+            
+            toggleMagnetic() {
+                this.paddle.activateMagneticMode(5000);
+            }
+            
+            speedBoost() {
+                if (this.ball.isLaunched) {
+                    this.ball.applySpeedBoost(2.0, 3000);
+                }
+            }
+            
+            toggleDebug() {
+                this.showDebug = !this.showDebug;
+            }
+            
+            update(deltaTime) {
+                // Update entities
+                this.paddle.update(deltaTime);
+                this.ball.update(deltaTime);
+                
+                // Update physics
+                this.physics.update(deltaTime);
+                
+                // Count collisions
+                this.collisionCount = this.physics.getCollisionPairs().length;
+                
+                // Check if ball fell off bottom
+                if (this.ball.physicsBody.position.y > GAME_CONFIG.CANVAS.HEIGHT + 50) {
+                    this.resetBall();
+                }
+                
+                // Update FPS counter
+                this.frameCount++;
+                const now = performance.now();
+                if (now - this.lastFpsUpdate > 1000) {
+                    this.fps = Math.round(this.frameCount * 1000 / (now - this.lastFpsUpdate));
+                    this.frameCount = 0;
+                    this.lastFpsUpdate = now;
+                }
+            }
+            
+            render() {
+                // Clear canvas
+                this.renderer.clear();
+                
+                // Render game boundaries
+                this.renderBoundaries();
+                
+                // Render entities
+                this.paddle.render(this.renderer);
+                this.ball.render(this.renderer);
+                
+                // Render debug info
+                if (this.showDebug) {
+                    this.renderDebugInfo();
+                }
+                
+                // Update debug display
+                this.updateDebugDisplay();
+            }
+            
+            renderBoundaries() {
+                const ctx = this.renderer.ctx;
+                
+                ctx.save();
+                ctx.strokeStyle = COLORS.UI_SECONDARY;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                
+                // Top boundary
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(GAME_CONFIG.CANVAS.WIDTH, 0);
+                ctx.stroke();
+                
+                // Side boundaries
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, GAME_CONFIG.CANVAS.HEIGHT);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(GAME_CONFIG.CANVAS.WIDTH, 0);
+                ctx.lineTo(GAME_CONFIG.CANVAS.WIDTH, GAME_CONFIG.CANVAS.HEIGHT);
+                ctx.stroke();
+                
+                // Bottom boundary (danger zone)
+                ctx.strokeStyle = COLORS.UI_ERROR;
+                ctx.setLineDash([10, 5]);
+                ctx.beginPath();
+                ctx.moveTo(0, GAME_CONFIG.CANVAS.HEIGHT);
+                ctx.lineTo(GAME_CONFIG.CANVAS.WIDTH, GAME_CONFIG.CANVAS.HEIGHT);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+            
+            renderDebugInfo() {
+                const ctx = this.renderer.ctx;
+                
+                // Render physics body bounds
+                ctx.save();
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 1;
+                
+                // Paddle bounds
+                const paddleBounds = this.paddle.getBounds();
+                ctx.strokeRect(paddleBounds.left, paddleBounds.top, 
+                             paddleBounds.right - paddleBounds.left, 
+                             paddleBounds.bottom - paddleBounds.top);
+                
+                // Ball bounds
+                const ballBounds = this.ball.getBounds();
+                ctx.strokeRect(ballBounds.left, ballBounds.top, 
+                             ballBounds.right - ballBounds.left, 
+                             ballBounds.bottom - ballBounds.top);
+                
+                // Ball velocity vector
+                const ballCenter = this.ball.getCenter();
+                const velocity = this.ball.physicsBody.velocity;
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(ballCenter.x, ballCenter.y);
+                ctx.lineTo(ballCenter.x + velocity.x * 0.1, ballCenter.y + velocity.y * 0.1);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+            
+            updateDebugDisplay() {
+                const ballCenter = this.ball.getCenter();
+                const paddleCenter = this.paddle.getCenter();
+                const ballSpeed = this.ball.physicsBody.velocity.magnitude();
+                
+                document.getElementById('fps').textContent = this.fps;
+                document.getElementById('ballSpeed').textContent = ballSpeed.toFixed(1);
+                document.getElementById('ballPos').textContent = `${ballCenter.x.toFixed(0)}, ${ballCenter.y.toFixed(0)}`;
+                document.getElementById('paddlePos').textContent = `${paddleCenter.x.toFixed(0)}, ${paddleCenter.y.toFixed(0)}`;
+                document.getElementById('ballState').textContent = this.ball.isStuck ? 'Stuck' : (this.ball.isLaunched ? 'Launched' : 'Free');
+                document.getElementById('collisionCount').textContent = this.collisionCount;
+            }
+            
+            gameLoop(currentTime = 0) {
+                const deltaTime = Math.min((currentTime - this.lastTime) / 1000, GAME_CONFIG.MAX_DELTA_TIME);
+                this.lastTime = currentTime;
+                
+                if (deltaTime > 0) {
+                    this.update(deltaTime);
+                    this.render();
+                }
+                
+                requestAnimationFrame((time) => this.gameLoop(time));
+            }
+        }
+
+        // Global functions for buttons
+        let paddleBallTest;
+        
+        window.launchBall = () => {
+            paddleBallTest.launchBall();
+        };
+        
+        window.resetBall = () => {
+            paddleBallTest.resetBall();
+        };
+        
+        window.toggleMagnetic = () => {
+            paddleBallTest.toggleMagnetic();
+        };
+        
+        window.speedBoost = () => {
+            paddleBallTest.speedBoost();
+        };
+        
+        window.toggleDebug = () => {
+            paddleBallTest.toggleDebug();
+        };
+
+        // Start the test
+        paddleBallTest = new PaddleBallTest();
+    </script>
+</body>
+</html>

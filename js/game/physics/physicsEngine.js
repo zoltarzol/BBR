@@ -30,6 +30,10 @@ export class PhysicsBody {
             bottom: y + height
         };
         
+        // Collision cooldown to prevent rapid repeated collisions
+        this.collisionCooldowns = new Map();
+        this.collisionCooldownTime = 0.1; // 100ms cooldown
+        
         // Callbacks
         this.onCollision = null;
         this.onBoundaryHit = null;
@@ -40,6 +44,9 @@ export class PhysicsBody {
      */
     update(deltaTime) {
         if (this.type === 'static') return;
+        
+        // Update collision cooldowns
+        this.updateCollisionCooldowns(deltaTime);
         
         // Apply acceleration to velocity
         this.velocity.add(Vector2D.multiply(this.acceleration, deltaTime));
@@ -58,6 +65,34 @@ export class PhysicsBody {
         
         // Reset acceleration for next frame
         this.acceleration.set(0, 0);
+    }
+    
+    /**
+     * Update collision cooldowns
+     */
+    updateCollisionCooldowns(deltaTime) {
+        for (const [bodyId, cooldown] of this.collisionCooldowns.entries()) {
+            const newCooldown = cooldown - deltaTime;
+            if (newCooldown <= 0) {
+                this.collisionCooldowns.delete(bodyId);
+            } else {
+                this.collisionCooldowns.set(bodyId, newCooldown);
+            }
+        }
+    }
+    
+    /**
+     * Check if collision with another body is on cooldown
+     */
+    isCollisionOnCooldown(otherId) {
+        return this.collisionCooldowns.has(otherId);
+    }
+    
+    /**
+     * Set collision cooldown with another body
+     */
+    setCollisionCooldown(otherId) {
+        this.collisionCooldowns.set(otherId, this.collisionCooldownTime);
     }
     
     /**
@@ -211,6 +246,65 @@ export class CollisionSystem {
             const impulseB = Vector2D.divide(impulse, bodyB.mass);
             bodyB.velocity.subtract(impulseB);
         }
+        
+        // Separate overlapping bodies to prevent sticking
+        this.separateBodies(bodyA, bodyB, normal);
+    }
+    
+    /**
+     * Separate overlapping bodies to prevent collision sticking
+     */
+    separateBodies(bodyA, bodyB, normal) {
+        // Calculate overlap
+        let overlap = 0;
+        
+        if (bodyA.type === 'circle' && bodyB.type === 'rectangle') {
+            const circleCenter = bodyA.getCenter();
+            const radius = bodyA.size.x / 2;
+            
+            // Find closest point on rectangle to circle center
+            const closestX = Math.max(bodyB.bounds.left, Math.min(circleCenter.x, bodyB.bounds.right));
+            const closestY = Math.max(bodyB.bounds.top, Math.min(circleCenter.y, bodyB.bounds.bottom));
+            
+            const distance = Vector2D.distance(circleCenter, new Vector2D(closestX, closestY));
+            overlap = radius - distance;
+        } else if (bodyA.type === 'rectangle' && bodyB.type === 'circle') {
+            const circleCenter = bodyB.getCenter();
+            const radius = bodyB.size.x / 2;
+            
+            // Find closest point on rectangle to circle center
+            const closestX = Math.max(bodyA.bounds.left, Math.min(circleCenter.x, bodyA.bounds.right));
+            const closestY = Math.max(bodyA.bounds.top, Math.min(circleCenter.y, bodyA.bounds.bottom));
+            
+            const distance = Vector2D.distance(circleCenter, new Vector2D(closestX, closestY));
+            overlap = radius - distance;
+        } else {
+            // AABB vs AABB overlap
+            const overlapX = Math.min(
+                bodyA.bounds.right - bodyB.bounds.left,
+                bodyB.bounds.right - bodyA.bounds.left
+            );
+            const overlapY = Math.min(
+                bodyA.bounds.bottom - bodyB.bounds.top,
+                bodyB.bounds.bottom - bodyA.bounds.top
+            );
+            overlap = Math.min(overlapX, overlapY);
+        }
+        
+        if (overlap > 0) {
+            const separationDistance = overlap * 0.5 + 0.1; // Small buffer
+            const separation = Vector2D.multiply(normal, separationDistance);
+            
+            if (bodyA.type !== 'static') {
+                bodyA.position.add(separation);
+                bodyA.updateBounds();
+            }
+            
+            if (bodyB.type !== 'static') {
+                bodyB.position.subtract(separation);
+                bodyB.updateBounds();
+            }
+        }
     }
     
     /**
@@ -253,14 +347,24 @@ export class CollisionSystem {
                 }
                 
                 if (isColliding) {
-                    this.collisionPairs.push({ bodyA, bodyB, normal });
+                    // Check collision cooldowns to prevent rapid repeated collisions
+                    const bodyAOnCooldown = bodyA.isCollisionOnCooldown(bodyB.id);
+                    const bodyBOnCooldown = bodyB.isCollisionOnCooldown(bodyA.id);
                     
-                    // Resolve collision
-                    this.resolveCollision(bodyA, bodyB, normal);
-                    
-                    // Call collision callbacks
-                    if (bodyA.onCollision) bodyA.onCollision(bodyB, normal);
-                    if (bodyB.onCollision) bodyB.onCollision(bodyA, Vector2D.multiply(normal, -1));
+                    if (!bodyAOnCooldown && !bodyBOnCooldown) {
+                        this.collisionPairs.push({ bodyA, bodyB, normal });
+                        
+                        // Set collision cooldowns
+                        bodyA.setCollisionCooldown(bodyB.id);
+                        bodyB.setCollisionCooldown(bodyA.id);
+                        
+                        // Resolve collision
+                        this.resolveCollision(bodyA, bodyB, normal);
+                        
+                        // Call collision callbacks
+                        if (bodyA.onCollision) bodyA.onCollision(bodyB, normal);
+                        if (bodyB.onCollision) bodyB.onCollision(bodyA, Vector2D.multiply(normal, -1));
+                    }
                 }
             }
         }
