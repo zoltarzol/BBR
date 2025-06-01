@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block System Test - Block Breaker Revolution</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #333;
+            background: #000;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px;
+        }
+        
+        .controls button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #5855eb;
+        }
+        
+        .info {
+            text-align: center;
+            margin: 10px;
+            font-size: 14px;
+        }
+        
+        .instructions {
+            text-align: center;
+            margin: 20px;
+            padding: 15px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 8px;
+        }
+        
+        .game-ui {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            min-width: 200px;
+        }
+        
+        .debug-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .level-selector {
+            text-align: center;
+            margin: 15px;
+        }
+        
+        .level-selector select {
+            padding: 8px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Block System Test - MVP Demo</h1>
+    <div class="info">Complete block breaker game with paddle, ball, and destructible blocks</div>
+    
+    <div class="instructions">
+        <strong>Controls:</strong><br>
+        Arrow Keys / A,D - Move paddle left/right<br>
+        Space - Launch ball (when attached to paddle)<br>
+        R - Reset game<br>
+        Click - Reset ball to paddle
+    </div>
+    
+    <div class="level-selector">
+        <label for="levelSelect">Level: </label>
+        <select id="levelSelect" onchange="changeLevel()">
+            <option value="1">Level 1 - Basic</option>
+            <option value="2">Level 2 - Mixed</option>
+            <option value="3">Level 3 - Advanced</option>
+            <option value="4">Level 4 - Random</option>
+            <option value="5">Level 5 - Random</option>
+        </select>
+    </div>
+    
+    <canvas id="gameCanvas" width="1024" height="768"></canvas>
+    
+    <div class="controls">
+        <button onclick="launchBall()">Launch Ball</button>
+        <button onclick="resetGame()">Reset Game</button>
+        <button onclick="nextLevel()">Next Level</button>
+        <button onclick="toggleDebug()">Toggle Debug</button>
+    </div>
+    
+    <div class="game-ui" id="gameUI">
+        <div><strong>GAME STATUS</strong></div>
+        <div>Level: <span id="currentLevel">1</span></div>
+        <div>Score: <span id="score">0</span></div>
+        <div>Blocks: <span id="blocksRemaining">0</span>/<span id="totalBlocks">0</span></div>
+        <div>Progress: <span id="progress">0</span>%</div>
+        <div>Lives: <span id="lives">3</span></div>
+        <div id="gameStatus">Ready</div>
+    </div>
+    
+    <div class="debug-info" id="debugInfo">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Ball Speed: <span id="ballSpeed">0</span></div>
+        <div>Ball State: <span id="ballState">Stuck</span></div>
+        <div>Collisions: <span id="collisionCount">0</span></div>
+        <div>Physics Bodies: <span id="physicsBodyCount">0</span></div>
+    </div>
+
+    <script type="module">
+        import { PhysicsEngine } from './js/game/physics/physicsEngine.js';
+        import { Paddle } from './js/game/entities/paddle.js';
+        import { Ball } from './js/game/entities/ball.js';
+        import { BlockGrid } from './js/game/systems/blockGrid.js';
+        import { Renderer } from './js/game/core/renderer.js';
+        import { Vector2D } from './js/utils/vector.js';
+        import { GAME_CONFIG, COLORS } from './js/utils/constants.js';
+
+        class BlockBreakerGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.physics = new PhysicsEngine();
+                this.renderer = new Renderer(this.canvas);
+                
+                // Game entities
+                this.paddle = null;
+                this.ball = null;
+                this.blockGrid = null;
+                
+                // Game state
+                this.currentLevel = 1;
+                this.score = 0;
+                this.lives = 3;
+                this.gameState = 'ready'; // ready, playing, paused, gameOver, levelComplete
+                
+                // Performance tracking
+                this.lastTime = 0;
+                this.fps = 0;
+                this.frameCount = 0;
+                this.lastFpsUpdate = 0;
+                this.showDebug = true;
+                
+                this.init();
+            }
+            
+            init() {
+                // Start physics engine
+                this.physics.start();
+                
+                // Create block grid system
+                this.blockGrid = new BlockGrid(this.physics);
+                
+                // Create paddle
+                const paddleX = GAME_CONFIG.CANVAS.WIDTH / 2 - GAME_CONFIG.PHYSICS.PADDLE_WIDTH / 2;
+                const paddleY = GAME_CONFIG.CANVAS.HEIGHT - 50;
+                this.paddle = new Paddle(paddleX, paddleY);
+                this.physics.addBody(this.paddle.physicsBody);
+                
+                // Create ball
+                const ballX = GAME_CONFIG.CANVAS.WIDTH / 2;
+                const ballY = paddleY - 20;
+                this.ball = new Ball(ballX, ballY);
+                this.physics.addBody(this.ball.physicsBody);
+                
+                // Start with ball stuck to paddle
+                this.ball.stickTo(this.paddle);
+                
+                // Generate first level
+                this.startLevel(1);
+                
+                // Add event listeners
+                this.setupEventListeners();
+                
+                // Start game loop
+                this.gameLoop();
+            }
+            
+            setupEventListeners() {
+                // Mouse interaction
+                this.canvas.addEventListener('click', (e) => {
+                    if (this.gameState === 'playing' && !this.ball.isStuck) {
+                        this.resetBall();
+                    } else if (this.ball.isStuck) {
+                        this.launchBall();
+                    }
+                });
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    switch(e.code) {
+                        case 'Space':
+                            if (this.ball.isStuck) {
+                                this.launchBall();
+                            }
+                            e.preventDefault();
+                            break;
+                        case 'KeyR':
+                            this.resetGame();
+                            e.preventDefault();
+                            break;
+                    }
+                });
+            }
+            
+            startLevel(levelNumber) {
+                this.currentLevel = levelNumber;
+                this.gameState = 'ready';
+                
+                // Generate level
+                this.blockGrid.generateLevel(levelNumber);
+                
+                // Reset ball
+                this.resetBall();
+                
+                // Update UI
+                this.updateUI();
+                
+                console.log(`Started level ${levelNumber}`);
+            }
+            
+            launchBall() {
+                if (this.ball.isStuck && this.gameState !== 'gameOver') {
+                    // Launch at slight random angle
+                    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.4;
+                    this.ball.launch(angle);
+                    this.gameState = 'playing';
+                }
+            }
+            
+            resetBall() {
+                const paddleCenter = this.paddle.getCenter();
+                this.ball.reset(paddleCenter.x, paddleCenter.y - 20);
+                this.ball.stickTo(this.paddle);
+                
+                if (this.gameState === 'playing') {
+                    this.gameState = 'ready';
+                }
+            }
+            
+            resetGame() {
+                this.score = 0;
+                this.lives = 3;
+                this.startLevel(1);
+            }
+            
+            nextLevel() {
+                this.startLevel(this.currentLevel + 1);
+            }
+            
+            changeLevel() {
+                const levelSelect = document.getElementById('levelSelect');
+                const selectedLevel = parseInt(levelSelect.value);
+                this.startLevel(selectedLevel);
+            }
+            
+            toggleDebug() {
+                this.showDebug = !this.showDebug;
+            }
+            
+            update(deltaTime) {
+                // Update entities
+                this.paddle.update(deltaTime);
+                this.ball.update(deltaTime);
+                this.blockGrid.update(deltaTime);
+                
+                // Update physics
+                this.physics.update(deltaTime);
+                
+                // Check game conditions
+                this.checkGameConditions();
+                
+                // Update performance tracking
+                this.updatePerformanceTracking();
+            }
+            
+            checkGameConditions() {
+                // Check if ball fell off bottom
+                if (this.ball.physicsBody.position.y > GAME_CONFIG.CANVAS.HEIGHT + 50) {
+                    this.lives--;
+                    
+                    if (this.lives <= 0) {
+                        this.gameState = 'gameOver';
+                        console.log('Game Over! Final Score:', this.score);
+                    } else {
+                        this.resetBall();
+                        console.log('Life lost. Lives remaining:', this.lives);
+                    }
+                }
+                
+                // Check level completion
+                if (this.blockGrid.isLevelComplete() && this.gameState === 'playing') {
+                    this.gameState = 'levelComplete';
+                    this.score += this.blockGrid.score;
+                    console.log(`Level ${this.currentLevel} completed! Score: ${this.score}`);
+                    
+                    // Auto-advance to next level after delay
+                    setTimeout(() => {
+                        this.startLevel(this.currentLevel + 1);
+                    }, 2000);
+                }
+                
+                // Update score from block grid
+                if (this.blockGrid.score > 0) {
+                    this.score += this.blockGrid.score;
+                    this.blockGrid.score = 0; // Reset grid score after adding
+                }
+            }
+            
+            updatePerformanceTracking() {
+                this.frameCount++;
+                const now = performance.now();
+                if (now - this.lastFpsUpdate > 1000) {
+                    this.fps = Math.round(this.frameCount * 1000 / (now - this.lastFpsUpdate));
+                    this.frameCount = 0;
+                    this.lastFpsUpdate = now;
+                }
+            }
+            
+            render() {
+                // Clear canvas
+                this.renderer.clear();
+                
+                // Render game boundaries
+                this.renderBoundaries();
+                
+                // Render entities
+                this.blockGrid.render(this.renderer);
+                this.paddle.render(this.renderer);
+                this.ball.render(this.renderer);
+                
+                // Render game state overlay
+                this.renderGameStateOverlay();
+                
+                // Render debug info
+                if (this.showDebug) {
+                    this.renderDebugInfo();
+                }
+                
+                // Update UI
+                this.updateUI();
+            }
+            
+            renderBoundaries() {
+                const ctx = this.renderer.ctx;
+                
+                ctx.save();
+                ctx.strokeStyle = COLORS.UI_SECONDARY;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                
+                // Top boundary
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(GAME_CONFIG.CANVAS.WIDTH, 0);
+                ctx.stroke();
+                
+                // Side boundaries
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, GAME_CONFIG.CANVAS.HEIGHT);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(GAME_CONFIG.CANVAS.WIDTH, 0);
+                ctx.lineTo(GAME_CONFIG.CANVAS.WIDTH, GAME_CONFIG.CANVAS.HEIGHT);
+                ctx.stroke();
+                
+                // Bottom boundary (danger zone)
+                ctx.strokeStyle = COLORS.UI_ERROR;
+                ctx.setLineDash([10, 5]);
+                ctx.beginPath();
+                ctx.moveTo(0, GAME_CONFIG.CANVAS.HEIGHT);
+                ctx.lineTo(GAME_CONFIG.CANVAS.WIDTH, GAME_CONFIG.CANVAS.HEIGHT);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+            
+            renderGameStateOverlay() {
+                const ctx = this.renderer.ctx;
+                
+                if (this.gameState === 'ready' && this.ball.isStuck) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Press SPACE to Launch Ball', GAME_CONFIG.CANVAS.WIDTH / 2, GAME_CONFIG.CANVAS.HEIGHT / 2);
+                    ctx.restore();
+                } else if (this.gameState === 'gameOver') {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(0, 0, GAME_CONFIG.CANVAS.WIDTH, GAME_CONFIG.CANVAS.HEIGHT);
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '48px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('GAME OVER', GAME_CONFIG.CANVAS.WIDTH / 2, GAME_CONFIG.CANVAS.HEIGHT / 2 - 50);
+                    
+                    ctx.font = '24px Arial';
+                    ctx.fillText(`Final Score: ${this.score}`, GAME_CONFIG.CANVAS.WIDTH / 2, GAME_CONFIG.CANVAS.HEIGHT / 2 + 20);
+                    ctx.fillText('Press R to Restart', GAME_CONFIG.CANVAS.WIDTH / 2, GAME_CONFIG.CANVAS.HEIGHT / 2 + 60);
+                    ctx.restore();
+                } else if (this.gameState === 'levelComplete') {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(16, 185, 129, 0.8)';
+                    ctx.font = '36px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`Level ${this.currentLevel} Complete!`, GAME_CONFIG.CANVAS.WIDTH / 2, GAME_CONFIG.CANVAS.HEIGHT / 2);
+                    ctx.restore();
+                }
+            }
+            
+            renderDebugInfo() {
+                const ctx = this.renderer.ctx;
+                
+                // Render physics body bounds
+                ctx.save();
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 1;
+                
+                // Paddle bounds
+                const paddleBounds = this.paddle.getBounds();
+                ctx.strokeRect(paddleBounds.left, paddleBounds.top, 
+                             paddleBounds.right - paddleBounds.left, 
+                             paddleBounds.bottom - paddleBounds.top);
+                
+                // Ball bounds
+                const ballBounds = this.ball.getBounds();
+                ctx.strokeRect(ballBounds.left, ballBounds.top, 
+                             ballBounds.right - ballBounds.left, 
+                             ballBounds.bottom - ballBounds.top);
+                
+                // Ball velocity vector
+                const ballCenter = this.ball.getCenter();
+                const velocity = this.ball.physicsBody.velocity;
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(ballCenter.x, ballCenter.y);
+                ctx.lineTo(ballCenter.x + velocity.x * 0.1, ballCenter.y + velocity.y * 0.1);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+            
+            updateUI() {
+                const stats = this.blockGrid.getLevelStats();
+                
+                document.getElementById('currentLevel').textContent = this.currentLevel;
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('blocksRemaining').textContent = stats.activeBlocks;
+                document.getElementById('totalBlocks').textContent = stats.totalBlocks;
+                document.getElementById('progress').textContent = Math.round(stats.completionPercentage);
+                document.getElementById('lives').textContent = this.lives;
+                document.getElementById('gameStatus').textContent = this.gameState.toUpperCase();
+                
+                // Debug info
+                const ballSpeed = this.ball.physicsBody.velocity.magnitude();
+                document.getElementById('fps').textContent = this.fps;
+                document.getElementById('ballSpeed').textContent = ballSpeed.toFixed(1);
+                document.getElementById('ballState').textContent = this.ball.isStuck ? 'Stuck' : (this.ball.isLaunched ? 'Launched' : 'Free');
+                document.getElementById('collisionCount').textContent = this.physics.getCollisionPairs().length;
+                document.getElementById('physicsBodyCount').textContent = this.physics.getAllBodies().length;
+            }
+            
+            gameLoop(currentTime = 0) {
+                const deltaTime = Math.min((currentTime - this.lastTime) / 1000, GAME_CONFIG.MAX_DELTA_TIME);
+                this.lastTime = currentTime;
+                
+                if (deltaTime > 0) {
+                    this.update(deltaTime);
+                    this.render();
+                }
+                
+                requestAnimationFrame((time) => this.gameLoop(time));
+            }
+        }
+
+        // Global functions for buttons
+        let game;
+        
+        window.launchBall = () => {
+            game.launchBall();
+        };
+        
+        window.resetGame = () => {
+            game.resetGame();
+        };
+        
+        window.nextLevel = () => {
+            game.nextLevel();
+        };
+        
+        window.toggleDebug = () => {
+            game.toggleDebug();
+        };
+        
+        window.changeLevel = () => {
+            game.changeLevel();
+        };
+
+        // Start the game
+        game = new BlockBreakerGame();
+    </script>
+</body>
+</html>
