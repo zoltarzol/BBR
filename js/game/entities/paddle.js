@@ -233,13 +233,13 @@ export class Paddle {
         const hitPosition = (ballCenter.x - paddleCenter.x) / (this.physicsBody.size.x / 2);
         const clampedHitPosition = Math.max(-1, Math.min(1, hitPosition));
         
-        // Apply spin based on hit position and paddle movement
-        const spinFactor = clampedHitPosition * 0.3;
-        const paddleVelocityInfluence = this.physicsBody.velocity.x * 0.1;
+        // Apply spin based on hit position and paddle movement (increased by 5x)
+        const spinFactor = clampedHitPosition * 1.5; // Increased from 0.3 to 1.5
+        const paddleVelocityInfluence = this.physicsBody.velocity.x * 0.5; // Increased from 0.1 to 0.5
         
-        // Modify ball velocity based on hit position
+        // Modify ball velocity based on hit position (increased angle range by 5x)
         const baseAngle = -Math.PI / 2; // Straight up
-        const angleModification = clampedHitPosition * Math.PI / 6; // ±30 degrees
+        const angleModification = clampedHitPosition * Math.PI * 5 / 6; // ±150 degrees (was ±30)
         const finalAngle = baseAngle + angleModification;
         
         // Set ball velocity with controlled angle

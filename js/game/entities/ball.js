@@ -258,12 +258,24 @@ export class Ball {
         // Add collision particles
         this.createCollisionParticles(normal);
         
-        // Apply spin based on collision angle
+        // Apply enhanced spin and angle modification based on collision (increased by 5x)
         if (other.type === 'rectangle') {
             const relativeVelocity = Vector2D.subtract(this.physicsBody.velocity, other.velocity || Vector2D.zero());
             const tangent = new Vector2D(-normal.y, normal.x);
             const tangentialVelocity = Vector2D.dot(relativeVelocity, tangent);
-            this.spin += tangentialVelocity * 0.01;
+            this.spin += tangentialVelocity * 0.05; // Increased from 0.01 to 0.05
+            
+            // Add dramatic angle modification for block collisions
+            const currentSpeed = this.physicsBody.velocity.magnitude();
+            const currentAngle = Math.atan2(this.physicsBody.velocity.y, this.physicsBody.velocity.x);
+            
+            // Add random angle variation (±45 degrees) for more dynamic gameplay
+            const angleVariation = (Math.random() - 0.5) * Math.PI / 2; // ±45 degrees
+            const newAngle = currentAngle + angleVariation;
+            
+            // Apply the new angle while maintaining speed
+            this.physicsBody.velocity.x = Math.cos(newAngle) * currentSpeed;
+            this.physicsBody.velocity.y = Math.sin(newAngle) * currentSpeed;
         }
         
         console.log(`Ball collision with ${other.type || 'object'}`);
