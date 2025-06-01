@@ -1,0 +1,47 @@
+# Development files
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node modules (for development tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+*.min.js
+*.min.css
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.cache
+.temp/
+temp/
+
+# IDE specific files
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+coverage/
+.nyc_output/
