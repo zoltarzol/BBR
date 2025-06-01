@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Loop Test</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #0f0f23; color: white; font-family: Arial, sans-serif; }
+        canvas { border: 2px solid #6366f1; border-radius: 8px; }
+        .controls { margin: 20px 0; }
+        button { background: #6366f1; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #4f46e5; }
+        .stats { margin: 20px 0; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Game Loop & Rendering Test</h1>
+    <canvas id="test-canvas" width="800" height="600"></canvas>
+    
+    <div class="controls">
+        <button onclick="startTest()">Start</button>
+        <button onclick="stopTest()">Stop</button>
+        <button onclick="toggleDebug()">Toggle Debug</button>
+    </div>
+    
+    <div class="stats" id="stats"></div>
+    
+    <script type="module">
+        import { Renderer } from './js/game/core/renderer.js';
+        import { GAME_CONFIG, COLORS } from './js/utils/constants.js';
+        
+        let renderer, isRunning = false, frameCount = 0, lastTime = 0;
+        let debugMode = true;
+        
+        const canvas = document.getElementById('test-canvas');
+        renderer = new Renderer(canvas);
+        
+        function gameLoop() {
+            if (!isRunning) return;
+            
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            
+            // Clear and render test pattern
+            renderer.clear();
+            
+            // Animated background
+            const time = currentTime * 0.001;
+            const bgColor = `hsl(${(time * 30) % 360}, 30%, 10%)`;
+            
+            renderer.addToLayer(GAME_CONFIG.LAYERS.BACKGROUND, {
+                type: 'rectangle',
+                x: 0, y: 0,
+                width: canvas.width,
+                height: canvas.height,
+                fillColor: bgColor
+            });
+            
+            // Moving circle
+            renderer.addToLayer(GAME_CONFIG.LAYERS.BALL, {
+                type: 'circle',
+                x: 400 + Math.sin(time) * 200,
+                y: 300 + Math.cos(time * 0.7) * 150,
+                radius: 20,
+                fillColor: COLORS.BALL,
+                strokeColor: COLORS.BALL_TRAIL,
+                strokeWidth: 2
+            });
+            
+            // Rotating rectangle
+            renderer.addToLayer(GAME_CONFIG.LAYERS.BLOCKS, {
+                type: 'rectangle',
+                x: 350,
+                y: 250,
+                width: 100,
+                height: 100,
+                fillColor: COLORS.BLOCK_NORMAL,
+                strokeColor: COLORS.UI_PRIMARY,
+                strokeWidth: 3
+            });
+            
+            if (debugMode) {
+                // Performance text
+                renderer.addToLayer(GAME_CONFIG.LAYERS.UI_OVERLAY, {
+                    type: 'text',
+                    x: 10, y: 10,
+                    text: `Frame: ${frameCount} | Render Time: ${renderer.getRenderTime().toFixed(2)}ms`,
+                    fillColor: '#10b981',
+                    font: '14px monospace'
+                });
+                
+                renderer.addToLayer(GAME_CONFIG.LAYERS.UI_OVERLAY, {
+                    type: 'text',
+                    x: 10, y: 30,
+                    text: `Draw Calls: ${renderer.getDrawCalls()}`,
+                    fillColor: '#f59e0b',
+                    font: '14px monospace'
+                });
+            }
+            
+            renderer.render();
+            frameCount++;
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        window.startTest = () => {
+            isRunning = true;
+            lastTime = performance.now();
+            frameCount = 0;
+            gameLoop();
+        };
+        
+        window.stopTest = () => {
+            isRunning = false;
+        };
+        
+        window.toggleDebug = () => {
+            debugMode = !debugMode;
+        };
+        
+        // Auto-start
+        startTest();
+    </script>
+</body>
+</html>
