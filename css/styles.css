@@ -1,0 +1,535 @@
+/* ==========================================================================
+   Block Breaker Revolution - Main Styles
+   ========================================================================== */
+
+/* CSS Custom Properties (Variables) */
+:root {
+    /* Color Palette */
+    --primary-color: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #818cf8;
+    --secondary-color: #f59e0b;
+    --secondary-dark: #d97706;
+    --accent-color: #10b981;
+    --accent-dark: #047857;
+    
+    /* Background Colors */
+    --bg-primary: #0f0f23;
+    --bg-secondary: #1a1a2e;
+    --bg-tertiary: #16213e;
+    --bg-modal: rgba(15, 15, 35, 0.95);
+    
+    /* Text Colors */
+    --text-primary: #ffffff;
+    --text-secondary: #b8b8d1;
+    --text-muted: #7c7c99;
+    --text-accent: #10b981;
+    
+    /* Border Colors */
+    --border-primary: #2d2d44;
+    --border-secondary: #3a3a5c;
+    --border-accent: #6366f1;
+    
+    /* Game Colors */
+    --paddle-color: #6366f1;
+    --ball-color: #f59e0b;
+    --block-default: #4ade80;
+    --block-special: #f472b6;
+    --liquid-blue: #3b82f6;
+    --liquid-red: #ef4444;
+    --liquid-green: #10b981;
+    
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    --spacing-3xl: 4rem;
+    
+    /* Typography */
+    --font-family-primary: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-family-mono: 'Consolas', 'Monaco', 'Courier New', monospace;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    
+    /* Border Radius */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease-in-out;
+    --transition-normal: 0.3s ease-in-out;
+    --transition-slow: 0.5s ease-in-out;
+    
+    /* Z-Index Scale */
+    --z-dropdown: 1000;
+    --z-modal: 2000;
+    --z-overlay: 3000;
+    --z-toast: 4000;
+}
+
+/* ==========================================================================
+   Reset and Base Styles
+   ========================================================================== */
+
+/* Modern CSS Reset */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    line-height: 1.15;
+    -webkit-text-size-adjust: 100%;
+    font-size: 16px;
+}
+
+body {
+    font-family: var(--font-family-primary);
+    font-size: var(--font-size-base);
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    margin: 0;
+    overflow: hidden; /* Prevent scrolling for game */
+    user-select: none; /* Prevent text selection during gameplay */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+h1 { font-size: var(--font-size-4xl); }
+h2 { font-size: var(--font-size-3xl); }
+h3 { font-size: var(--font-size-2xl); }
+h4 { font-size: var(--font-size-xl); }
+h5 { font-size: var(--font-size-lg); }
+h6 { font-size: var(--font-size-base); }
+
+p {
+    margin-bottom: var(--spacing-md);
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Layout System
+   ========================================================================== */
+
+/* Screen Management */
+.screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    transition: opacity var(--transition-normal);
+    z-index: 1;
+}
+
+.screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Container System */
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+}
+
+/* Flexbox Utilities */
+.flex {
+    display: flex;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.flex-center {
+    justify-content: center;
+    align-items: center;
+}
+
+.flex-between {
+    justify-content: space-between;
+}
+
+.flex-around {
+    justify-content: space-around;
+}
+
+/* ==========================================================================
+   Game Canvas Area
+   ========================================================================== */
+
+#canvas-container {
+    position: relative;
+    width: 1024px;
+    height: 768px;
+    margin: 0 auto;
+    border: 2px solid var(--border-accent);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+#game-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated; /* Crisp pixel rendering */
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+#canvas-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: var(--z-overlay);
+}
+
+/* Canvas fallback message */
+.no-canvas-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-size: var(--font-size-xl);
+    color: var(--text-accent);
+    text-align: center;
+    padding: var(--spacing-xl);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+}
+
+/* ==========================================================================
+   HUD (Heads-Up Display)
+   ========================================================================== */
+
+#game-hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.2) 100%);
+    pointer-events: auto;
+    z-index: 10;
+}
+
+.hud-left, .hud-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+.hud-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.hud-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.hud-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.hud-value {
+    font-size: var(--font-size-lg);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-family: var(--font-family-mono);
+}
+
+.level-title {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    color: var(--text-accent);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+/* Base Button Styles */
+button {
+    font-family: inherit;
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: relative;
+    overflow: hidden;
+}
+
+button:focus {
+    outline: 2px solid var(--primary-light);
+    outline-offset: 2px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Button Variants */
+.menu-btn {
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+    color: var(--text-primary);
+    border: 1px solid var(--border-secondary);
+    padding: var(--spacing-lg) var(--spacing-2xl);
+    font-size: var(--font-size-lg);
+    min-width: 200px;
+    box-shadow: var(--shadow-md);
+}
+
+.menu-btn:hover {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-color: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.menu-btn.primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-color: var(--primary-light);
+    box-shadow: var(--shadow-lg);
+}
+
+.menu-btn.primary:hover {
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-xl);
+}
+
+.hud-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-lg);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
+}
+
+.hud-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: var(--primary-light);
+    transform: scale(1.1);
+}
+
+.tutorial-btn, .modal-btn, .settings-btn {
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+    color: var(--text-primary);
+    border: 1px solid var(--border-secondary);
+    padding: var(--spacing-md) var(--spacing-xl);
+}
+
+.tutorial-btn:hover, .modal-btn:hover, .settings-btn:hover {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-color: var(--primary-light);
+}
+
+.tutorial-btn.secondary, .modal-btn.secondary, .settings-btn.secondary {
+    background: transparent;
+    border-color: var(--border-primary);
+    color: var(--text-secondary);
+}
+
+.tutorial-btn.primary, .modal-btn.primary, .settings-btn.primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-color: var(--primary-light);
+}
+
+.back-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+    padding: var(--spacing-md) var(--spacing-lg);
+    position: absolute;
+    bottom: var(--spacing-xl);
+    left: var(--spacing-xl);
+}
+
+.back-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--primary-light);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
+
+.hidden {
+    display: none !important;
+}
+
+.invisible {
+    visibility: hidden;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.font-mono { font-family: var(--font-family-mono); }
+
+.color-primary { color: var(--primary-color); }
+.color-secondary { color: var(--secondary-color); }
+.color-accent { color: var(--accent-color); }
+.color-muted { color: var(--text-muted); }
+
+/* ==========================================================================
+   Performance and Accessibility
+   ========================================================================== */
+
+/* Smooth scrolling for any scrollable areas */
+html {
+    scroll-behavior: smooth;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --bg-primary: #000000;
+        --bg-secondary: #1a1a1a;
+        --text-primary: #ffffff;
+        --border-primary: #ffffff;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus improvements for keyboard navigation */
+*:focus {
+    outline: 2px solid var(--primary-light);
+    outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Responsive Design (Minimal - Desktop First)
+   ========================================================================== */
+
+/* Large screens */
+@media (min-width: 1440px) {
+    #canvas-container {
+        width: 1280px;
+        height: 960px;
+    }
+    
+    #game-canvas {
+        width: 1280px;
+        height: 960px;
+    }
+}
+
+/* Small desktop screens */
+@media (max-width: 1200px) {
+    #canvas-container {
+        width: 800px;
+        height: 600px;
+    }
+    
+    #game-canvas {
+        width: 800px;
+        height: 600px;
+    }
+}
+
+/* Fallback for very small screens (should not happen on desktop) */
+@media (max-width: 900px) {
+    .screen {
+        padding: var(--spacing-md);
+    }
+    
+    #canvas-container {
+        width: 100%;
+        max-width: 700px;
+        height: 525px;
+    }
+    
+    .menu-btn {
+        min-width: 150px;
+        padding: var(--spacing-md) var(--spacing-lg);
+    }
+}
