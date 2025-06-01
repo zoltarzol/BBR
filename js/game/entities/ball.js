@@ -64,22 +64,34 @@ export class Ball {
     
     /**
      * Launch ball with initial velocity
+     * Angle should be between 80° to 100° (going upward only)
      */
-    launch(angle = -Math.PI / 2, speed = null) {
+    launch(angle = null, speed = null) {
         if (speed === null) {
             speed = this.speed;
         }
         
+        // If no angle provided, generate random angle between 80° to 100° (upward only)
+        if (angle === null) {
+            // Convert degrees to radians: 80° to 100°
+            // In standard math coordinates: 0° = right, 90° = up, 180° = left
+            const minAngle = 80 * Math.PI / 180;  // 80° in radians
+            const maxAngle = 100 * Math.PI / 180; // 100° in radians
+            angle = minAngle + Math.random() * (maxAngle - minAngle);
+        }
+        
+        // Calculate velocity components (standard math coordinates)
+        // x = cos(angle), y = sin(angle), but we need to flip Y for screen coordinates
         this.physicsBody.setVelocity(
-            Math.sin(angle) * speed,
-            Math.cos(angle) * speed
+            Math.cos(angle) * speed,
+            -Math.sin(angle) * speed  // Negative because screen Y increases downward
         );
         
         this.isLaunched = true;
         this.isStuck = false;
         this.stuckTarget = null;
         
-        console.log(`Ball launched at angle: ${(angle * 180 / Math.PI).toFixed(1)}°`);
+        console.log(`Ball launched at angle: ${(angle * 180 / Math.PI).toFixed(1)}° (upward)`);
     }
     
     /**
