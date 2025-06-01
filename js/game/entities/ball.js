@@ -73,18 +73,19 @@ export class Ball {
         
         // If no angle provided, generate random angle between 80° to 100° (upward only)
         if (angle === null) {
-            // Convert degrees to radians: 80° to 100°
-            // In standard math coordinates: 0° = right, 90° = up, 180° = left
-            const minAngle = 80 * Math.PI / 180;  // 80° in radians
-            const maxAngle = 100 * Math.PI / 180; // 100° in radians
+            // For upward launch in screen coordinates, we need angles that produce negative Y velocity
+            // Screen coordinates: Y=0 at top, Y increases downward
+            // We want angles between 260° to 280° (or equivalently -100° to -80°) for upward motion
+            const minAngle = 260 * Math.PI / 180;  // 260° in radians (upward left)
+            const maxAngle = 280 * Math.PI / 180;  // 280° in radians (upward right)
             angle = minAngle + Math.random() * (maxAngle - minAngle);
         }
         
-        // Calculate velocity components (standard math coordinates)
-        // x = cos(angle), y = sin(angle), but we need to flip Y for screen coordinates
+        // Calculate velocity components for screen coordinates
+        // For upward motion, we need negative Y velocity (since Y increases downward)
         this.physicsBody.setVelocity(
             Math.cos(angle) * speed,
-            -Math.sin(angle) * speed  // Negative because screen Y increases downward
+            Math.sin(angle) * speed  // sin(260°-280°) gives negative values = upward motion
         );
         
         this.isLaunched = true;
