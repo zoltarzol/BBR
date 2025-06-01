@@ -153,6 +153,43 @@ export class Vector2D {
     toString() {
         return `Vector2D(${this.x.toFixed(2)}, ${this.y.toFixed(2)})`;
     }
+    // Static methods for creating new vectors without modifying existing ones
+    static add(v1, v2) {
+        return new Vector2D(v1.x + v2.x, v1.y + v2.y);
+    }
+    
+    static subtract(v1, v2) {
+        return new Vector2D(v1.x - v2.x, v1.y - v2.y);
+    }
+    
+    static multiply(vector, scalar) {
+        return new Vector2D(vector.x * scalar, vector.y * scalar);
+    }
+    
+    static divide(vector, scalar) {
+        if (scalar !== 0) {
+            return new Vector2D(vector.x / scalar, vector.y / scalar);
+        }
+        return new Vector2D(0, 0);
+    }
+    
+    static dot(v1, v2) {
+        return v1.x * v2.x + v1.y * v2.y;
+    }
+    
+    static distance(v1, v2) {
+        const dx = v1.x - v2.x;
+        const dy = v1.y - v2.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    static normalize(vector) {
+        const mag = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+        if (mag > 0) {
+            return new Vector2D(vector.x / mag, vector.y / mag);
+        }
+        return new Vector2D(0, 0);
+    }
 }
 
 // Static helper methods

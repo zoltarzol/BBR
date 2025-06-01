@@ -6,8 +6,10 @@
 // Game Configuration
 export const GAME_CONFIG = {
     // Canvas Dimensions
-    CANVAS_WIDTH: 1024,
-    CANVAS_HEIGHT: 768,
+    CANVAS: {
+        WIDTH: 1024,
+        HEIGHT: 768
+    },
     
     // Performance Settings
     TARGET_FPS: 60,
@@ -49,7 +51,11 @@ export const GAME_CONFIG = {
         PADDLE_SPEED: 400,
         BALL_SIZE: 8,
         PADDLE_WIDTH: 80,
-        PADDLE_HEIGHT: 12
+        PADDLE_HEIGHT: 12,
+        RESTITUTION: 0.8, // Bounciness factor
+        COLLISION_TOLERANCE: 0.1,
+        MAX_VELOCITY: 800,
+        WORLD_BOUNDS_PADDING: 10
     },
     
     // Game Mechanics Settings

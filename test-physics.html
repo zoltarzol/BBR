@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Engine Test - Block Breaker Revolution</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #333;
+            background: #000;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px;
+        }
+        
+        .controls button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #5855eb;
+        }
+        
+        .info {
+            text-align: center;
+            margin: 10px;
+            font-size: 14px;
+        }
+        
+        .debug-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Physics Engine Test</h1>
+    <div class="info">Testing collision detection, physics bodies, and boundary constraints</div>
+    
+    <canvas id="gameCanvas" width="1024" height="768"></canvas>
+    
+    <div class="controls">
+        <button onclick="addBall()">Add Ball</button>
+        <button onclick="addBox()">Add Box</button>
+        <button onclick="toggleGravity()">Toggle Gravity</button>
+        <button onclick="clearBodies()">Clear All</button>
+        <button onclick="toggleDebug()">Toggle Debug</button>
+    </div>
+    
+    <div class="debug-info" id="debugInfo">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Bodies: <span id="bodyCount">0</span></div>
+        <div>Collisions: <span id="collisionCount">0</span></div>
+        <div>Gravity: <span id="gravityStatus">OFF</span></div>
+    </div>
+
+    <script type="module">
+        import { PhysicsEngine, PhysicsBody } from './js/game/physics/physicsEngine.js';
+        import { Vector2D } from './js/utils/vector.js';
+        import { GAME_CONFIG, COLORS } from './js/utils/constants.js';
+
+        class PhysicsTest {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.physics = new PhysicsEngine();
+                this.lastTime = 0;
+                this.fps = 0;
+                this.frameCount = 0;
+                this.lastFpsUpdate = 0;
+                this.showDebug = true;
+                this.gravityEnabled = false;
+                
+                this.init();
+            }
+            
+            init() {
+                // Start physics engine
+                this.physics.start();
+                
+                // Add some initial test objects
+                this.addTestBall(200, 100);
+                this.addTestBox(400, 300);
+                this.addTestBox(600, 200);
+                
+                // Add mouse interaction
+                this.canvas.addEventListener('click', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    this.addTestBall(x, y);
+                });
+                
+                // Start game loop
+                this.gameLoop();
+            }
+            
+            addTestBall(x, y) {
+                const ball = new PhysicsBody(x - 10, y - 10, 20, 20, 'dynamic');
+                ball.type = 'circle';
+                ball.mass = 1;
+                ball.restitution = 0.8;
+                ball.setVelocity(
+                    (Math.random() - 0.5) * 400,
+                    (Math.random() - 0.5) * 400
+                );
+                
+                // Add collision callback
+                ball.onCollision = (other, normal) => {
+                    console.log('Ball collision with:', other.id);
+                };
+                
+                ball.onBoundaryHit = (normal) => {
+                    console.log('Ball hit boundary:', normal);
+                };
+                
+                this.physics.addBody(ball);
+            }
+            
+            addTestBox(x, y) {
+                const box = new PhysicsBody(x - 25, y - 25, 50, 50, 'dynamic');
+                box.type = 'rectangle';
+                box.mass = 2;
+                box.restitution = 0.6;
+                box.setVelocity(
+                    (Math.random() - 0.5) * 200,
+                    (Math.random() - 0.5) * 200
+                );
+                
+                box.onCollision = (other, normal) => {
+                    console.log('Box collision with:', other.id);
+                };
+                
+                this.physics.addBody(box);
+            }
+            
+            toggleGravity() {
+                this.gravityEnabled = !this.gravityEnabled;
+                this.physics.gravity.y = this.gravityEnabled ? 500 : 0;
+                document.getElementById('gravityStatus').textContent = this.gravityEnabled ? 'ON' : 'OFF';
+            }
+            
+            clearBodies() {
+                const bodies = this.physics.getAllBodies();
+                bodies.forEach(body => {
+                    this.physics.removeBody(body.id);
+                });
+            }
+            
+            toggleDebug() {
+                this.showDebug = !this.showDebug;
+            }
+            
+            update(deltaTime) {
+                // Update physics
+                this.physics.update(deltaTime);
+                
+                // Update FPS counter
+                this.frameCount++;
+                const now = performance.now();
+                if (now - this.lastFpsUpdate > 1000) {
+                    this.fps = Math.round(this.frameCount * 1000 / (now - this.lastFpsUpdate));
+                    this.frameCount = 0;
+                    this.lastFpsUpdate = now;
+                }
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Render all physics bodies
+                const bodies = this.physics.getAllBodies();
+                bodies.forEach(body => {
+                    this.renderBody(body);
+                });
+                
+                // Render collision pairs if debug is enabled
+                if (this.showDebug) {
+                    this.renderCollisions();
+                }
+                
+                // Update debug info
+                this.updateDebugInfo();
+            }
+            
+            renderBody(body) {
+                this.ctx.save();
+                
+                if (body.type === 'circle') {
+                    // Render circle
+                    const center = body.getCenter();
+                    const radius = body.size.x / 2;
+                    
+                    this.ctx.fillStyle = COLORS.BALL;
+                    this.ctx.beginPath();
+                    this.ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Velocity indicator
+                    if (this.showDebug) {
+                        this.ctx.strokeStyle = COLORS.BALL_TRAIL;
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(center.x, center.y);
+                        this.ctx.lineTo(
+                            center.x + body.velocity.x * 0.1,
+                            center.y + body.velocity.y * 0.1
+                        );
+                        this.ctx.stroke();
+                    }
+                } else {
+                    // Render rectangle
+                    this.ctx.fillStyle = COLORS.BLOCK_NORMAL;
+                    this.ctx.fillRect(body.position.x, body.position.y, body.size.x, body.size.y);
+                    
+                    // Velocity indicator
+                    if (this.showDebug) {
+                        const center = body.getCenter();
+                        this.ctx.strokeStyle = COLORS.UI_PRIMARY;
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(center.x, center.y);
+                        this.ctx.lineTo(
+                            center.x + body.velocity.x * 0.1,
+                            center.y + body.velocity.y * 0.1
+                        );
+                        this.ctx.stroke();
+                    }
+                }
+                
+                // Debug: Show bounding box
+                if (this.showDebug) {
+                    this.ctx.strokeStyle = '#ff0000';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(body.position.x, body.position.y, body.size.x, body.size.y);
+                }
+                
+                this.ctx.restore();
+            }
+            
+            renderCollisions() {
+                const collisions = this.physics.getCollisionPairs();
+                collisions.forEach(collision => {
+                    const centerA = collision.bodyA.getCenter();
+                    const centerB = collision.bodyB.getCenter();
+                    
+                    // Draw collision line
+                    this.ctx.strokeStyle = '#ff00ff';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(centerA.x, centerA.y);
+                    this.ctx.lineTo(centerB.x, centerB.y);
+                    this.ctx.stroke();
+                    
+                    // Draw normal vector
+                    if (collision.normal) {
+                        const midpoint = Vector2D.add(centerA, centerB).multiply(0.5);
+                        this.ctx.strokeStyle = '#00ff00';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(midpoint.x, midpoint.y);
+                        this.ctx.lineTo(
+                            midpoint.x + collision.normal.x * 30,
+                            midpoint.y + collision.normal.y * 30
+                        );
+                        this.ctx.stroke();
+                    }
+                });
+            }
+            
+            updateDebugInfo() {
+                document.getElementById('fps').textContent = this.fps;
+                document.getElementById('bodyCount').textContent = this.physics.getAllBodies().length;
+                document.getElementById('collisionCount').textContent = this.physics.getCollisionPairs().length;
+            }
+            
+            gameLoop(currentTime = 0) {
+                const deltaTime = Math.min((currentTime - this.lastTime) / 1000, GAME_CONFIG.MAX_DELTA_TIME);
+                this.lastTime = currentTime;
+                
+                if (deltaTime > 0) {
+                    this.update(deltaTime);
+                    this.render();
+                }
+                
+                requestAnimationFrame((time) => this.gameLoop(time));
+            }
+        }
+
+        // Global functions for buttons
+        let physicsTest;
+        
+        window.addBall = () => {
+            physicsTest.addTestBall(
+                Math.random() * 800 + 100,
+                Math.random() * 200 + 50
+            );
+        };
+        
+        window.addBox = () => {
+            physicsTest.addTestBox(
+                Math.random() * 800 + 100,
+                Math.random() * 200 + 50
+            );
+        };
+        
+        window.toggleGravity = () => {
+            physicsTest.toggleGravity();
+        };
+        
+        window.clearBodies = () => {
+            physicsTest.clearBodies();
+        };
+        
+        window.toggleDebug = () => {
+            physicsTest.toggleDebug();
+        };
+
+        // Start the test
+        physicsTest = new PhysicsTest();
+    </script>
+</body>
+</html>
