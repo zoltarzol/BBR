@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Test</title>
+    <style>
+        canvas { border: 1px solid #000; }
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Canvas Support Test</h1>
+    <canvas id="test-canvas" width="400" height="200">
+        Canvas not supported
+    </canvas>
+    <div id="result"></div>
+    
+    <script>
+        const canvas = document.getElementById('test-canvas');
+        const ctx = canvas.getContext('2d');
+        const result = document.getElementById('result');
+        
+        if (ctx) {
+            // Draw test pattern
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(10, 10, 50, 50);
+            
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(70, 10, 50, 50);
+            
+            ctx.fillStyle = '#0000ff';
+            ctx.fillRect(130, 10, 50, 50);
+            
+            ctx.fillStyle = '#000000';
+            ctx.font = '16px Arial';
+            ctx.fillText('Canvas is working!', 10, 100);
+            
+            result.innerHTML = '<p style="color: green;">✅ Canvas is fully supported!</p>';
+        } else {
+            result.innerHTML = '<p style="color: red;">❌ Canvas is not supported!</p>';
+        }
+    </script>
+</body>
+</html>
