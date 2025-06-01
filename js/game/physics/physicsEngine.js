@@ -292,18 +292,27 @@ export class CollisionSystem {
         }
         
         if (overlap > 0) {
-            const separationDistance = overlap + 2; // Larger buffer to ensure complete separation
+            // Much more aggressive separation to prevent sticking
+            const separationDistance = overlap + 5; // Large buffer to ensure complete separation
             const separation = Vector2D.multiply(normal, separationDistance);
             
-            if (bodyA.type !== 'static') {
+            // Apply separation with higher priority to dynamic bodies
+            if (bodyA.type !== 'static' && bodyB.type !== 'static') {
+                // Both dynamic - split separation
+                const halfSeparation = Vector2D.multiply(separation, 0.5);
+                bodyA.position.add(halfSeparation);
+                bodyB.position.subtract(halfSeparation);
+            } else if (bodyA.type !== 'static') {
+                // Only A is dynamic
                 bodyA.position.add(separation);
-                bodyA.updateBounds();
+            } else if (bodyB.type !== 'static') {
+                // Only B is dynamic
+                bodyB.position.subtract(separation);
             }
             
-            if (bodyB.type !== 'static') {
-                bodyB.position.subtract(separation);
-                bodyB.updateBounds();
-            }
+            // Update bounds after separation
+            if (bodyA.type !== 'static') bodyA.updateBounds();
+            if (bodyB.type !== 'static') bodyB.updateBounds();
         }
     }
     

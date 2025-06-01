@@ -211,6 +211,11 @@ export class Paddle {
      * Handle collision with other objects
      */
     handleCollision(other, normal) {
+        // Check if collision is on cooldown to prevent spam
+        if (this.physicsBody.isCollisionOnCooldown(other.id)) {
+            return; // Skip collision handling if on cooldown
+        }
+        
         // Special handling for ball collisions
         if (other.type === 'circle') {
             this.handleBallCollision(other, normal);
