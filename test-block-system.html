@@ -308,8 +308,9 @@
             }
             
             checkGameConditions() {
-                // Check if ball fell off bottom
-                if (this.ball.physicsBody.position.y > GAME_CONFIG.CANVAS.HEIGHT + 50) {
+                // CRITICAL FIX: Check if ball fell off bottom (proper life loss detection)
+                const ballBottom = this.ball.physicsBody.position.y + this.ball.physicsBody.size.y;
+                if (ballBottom > GAME_CONFIG.CANVAS.HEIGHT && this.gameState === 'playing') {
                     this.lives--;
                     
                     if (this.lives <= 0) {
@@ -317,6 +318,7 @@
                         console.log('Game Over! Final Score:', this.score);
                     } else {
                         this.resetBall();
+                        this.gameState = 'ready';
                         console.log('Life lost. Lives remaining:', this.lives);
                     }
                 }

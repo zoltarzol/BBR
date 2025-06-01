@@ -128,6 +128,9 @@ export class Paddle {
         
         this.physicsBody.velocity.x += acceleration * deltaTime;
         
+        // CRITICAL FIX: Lock paddle to horizontal movement only
+        this.physicsBody.velocity.y = 0; // Prevent any vertical movement
+        
         // Apply friction when not moving
         if (targetVelocityX === 0) {
             this.physicsBody.velocity.x *= Math.pow(0.1, deltaTime);
@@ -135,9 +138,14 @@ export class Paddle {
     }
     
     /**
-     * Keep paddle within screen bounds
+     * Keep paddle within screen bounds and locked to bottom
      */
     updateConstraints() {
+        // CRITICAL FIX: Lock paddle Y position to bottom of screen
+        const fixedY = GAME_CONFIG.CANVAS.HEIGHT - 50; // Fixed bottom position
+        this.physicsBody.position.y = fixedY;
+        
+        // Horizontal constraints
         if (this.physicsBody.position.x < this.minX) {
             this.physicsBody.position.x = this.minX;
             this.physicsBody.velocity.x = 0;
@@ -147,6 +155,9 @@ export class Paddle {
             this.physicsBody.position.x = this.maxX;
             this.physicsBody.velocity.x = 0;
         }
+        
+        // Always ensure no vertical movement
+        this.physicsBody.velocity.y = 0;
         
         this.physicsBody.updateBounds();
     }

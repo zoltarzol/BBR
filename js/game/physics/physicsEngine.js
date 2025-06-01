@@ -32,7 +32,7 @@ export class PhysicsBody {
         
         // Collision cooldown to prevent rapid repeated collisions
         this.collisionCooldowns = new Map();
-        this.collisionCooldownTime = 0.1; // 100ms cooldown
+        this.collisionCooldownTime = 0.25; // 250ms cooldown for better separation
         
         // Callbacks
         this.onCollision = null;
@@ -292,7 +292,7 @@ export class CollisionSystem {
         }
         
         if (overlap > 0) {
-            const separationDistance = overlap * 0.5 + 0.1; // Small buffer
+            const separationDistance = overlap + 2; // Larger buffer to ensure complete separation
             const separation = Vector2D.multiply(normal, separationDistance);
             
             if (bodyA.type !== 'static') {
@@ -322,6 +322,12 @@ export class CollisionSystem {
                 
                 if (!bodyA.isActive || !bodyB.isActive) continue;
                 
+                // Check collision cooldowns first to prevent any processing during cooldown
+                const bodyAOnCooldown = bodyA.isCollisionOnCooldown(bodyB.id);
+                const bodyBOnCooldown = bodyB.isCollisionOnCooldown(bodyA.id);
+                
+                if (bodyAOnCooldown || bodyBOnCooldown) continue;
+                
                 let isColliding = false;
                 let normal = null;
                 
@@ -347,24 +353,18 @@ export class CollisionSystem {
                 }
                 
                 if (isColliding) {
-                    // Check collision cooldowns to prevent rapid repeated collisions
-                    const bodyAOnCooldown = bodyA.isCollisionOnCooldown(bodyB.id);
-                    const bodyBOnCooldown = bodyB.isCollisionOnCooldown(bodyA.id);
+                    this.collisionPairs.push({ bodyA, bodyB, normal });
                     
-                    if (!bodyAOnCooldown && !bodyBOnCooldown) {
-                        this.collisionPairs.push({ bodyA, bodyB, normal });
-                        
-                        // Set collision cooldowns
-                        bodyA.setCollisionCooldown(bodyB.id);
-                        bodyB.setCollisionCooldown(bodyA.id);
-                        
-                        // Resolve collision
-                        this.resolveCollision(bodyA, bodyB, normal);
-                        
-                        // Call collision callbacks
-                        if (bodyA.onCollision) bodyA.onCollision(bodyB, normal);
-                        if (bodyB.onCollision) bodyB.onCollision(bodyA, Vector2D.multiply(normal, -1));
-                    }
+                    // Set collision cooldowns
+                    bodyA.setCollisionCooldown(bodyB.id);
+                    bodyB.setCollisionCooldown(bodyA.id);
+                    
+                    // Resolve collision
+                    this.resolveCollision(bodyA, bodyB, normal);
+                    
+                    // Call collision callbacks
+                    if (bodyA.onCollision) bodyA.onCollision(bodyB, normal);
+                    if (bodyB.onCollision) bodyB.onCollision(bodyA, Vector2D.multiply(normal, -1));
                 }
             }
         }
@@ -461,13 +461,9 @@ export class PhysicsEngine {
                 hitBoundary = true;
             }
             
-            // Bottom boundary
-            if (body.bounds.bottom > this.worldBounds.bottom) {
-                body.position.y = this.worldBounds.bottom - body.size.y;
-                body.velocity.y = -Math.abs(body.velocity.y) * body.restitution;
-                normal.set(0, -1);
-                hitBoundary = true;
-            }
+            // CRITICAL FIX: Remove bottom boundary collision
+            // Let ball fall through bottom - game logic will handle life loss
+            // No bottom boundary collision - this allows proper block breaker gameplay
             
             if (hitBoundary) {
                 body.updateBounds();
